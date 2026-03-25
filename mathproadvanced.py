@@ -13,7 +13,7 @@ os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
 # 1. CONFIGURACIÓN
 load_dotenv()
 # VOLVEMOS AL 70B: Ahora que no leemos PDFs gigantes, no rozaremos el límite de la API.
-mi_llm = "groq/llama-3.2-90b-text-preview"
+mi_llm = "groq/meta-llama/llama-4-scout-17b-16e-instruct"
 
 # 2. HERRAMIENTAS BLINDADAS
 @tool("calculadora")
