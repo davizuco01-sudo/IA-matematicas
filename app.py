@@ -68,3 +68,76 @@ def graficador(f_original: str, f_aprox: str):
         y_p = eval(limpiar(f_aprox), {"np": np, "x": x})
         
         plt.figure(figsize=(10, 6))
+        plt.plot(x, y_f, 'r-', linewidth=2, label=f"Original")
+        plt.plot(x, y_p, 'b--', linewidth=2, label=f"Aproximada")
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        plt.title("Visualización Matemática")
+        plt.savefig("grafico.png")
+        plt.close()
+        return "Gráfico generado con éxito como grafico.png."
+    except Exception as e:
+        return f"Error crítico al graficar: {e}"
+
+# 3. AGENTES
+arquitecto = Agent(
+    role='Catedrático de Álgebra y Análisis',
+    goal='Resolver el problema rigurosamente mostrando todos los pasos.',
+    backstory='Dominas tanto las matrices y valores propios como las integrales. Usas la calculadora para evitar errores.',
+    tools=[calculadora],
+    llm=mi_llm, verbose=True
+)
+
+investigador = Agent(
+    role='Investigador Científico',
+    goal='Contextualizar matemáticamente el problema resuelto.',
+    backstory='Posees un vasto conocimiento de física, ingeniería y ciencia de datos. Explicas para qué sirven los conceptos matemáticos en el mundo real usando tu propia memoria.',
+    tools=[], 
+    llm=mi_llm, verbose=True
+)
+
+visualizador = Agent(
+    role='Ingeniero Gráfico',
+    goal='Decidir si graficar o no, y hacerlo solo cuando proceda.',
+    backstory='Tienes criterio propio. Si ves matrices o vectores propios, TIENES ESTRICTAMENTE PROHIBIDO usar la herramienta graficador.',
+    tools=[graficador], 
+    llm=mi_llm, verbose=True
+)
+
+# 4. FLUJO DINÁMICO
+def ejecutar_ia_dinamica(problema):
+    t1 = Task(
+        description=f"Resuelve paso a paso el siguiente problema: {problema}",
+        agent=arquitecto,
+        expected_output="Solución matemática rigurosa."
+    )
+    t2 = Task(
+        description="Analiza la respuesta del Catedrático y explica en 2 o 3 párrafos las aplicaciones reales de esos conceptos en la ingeniería, física o informática usando tu conocimiento avanzado.",
+        agent=investigador,
+        expected_output="Sección de aplicaciones prácticas."
+    )
+    t3 = Task(
+        description=(
+            "Revisa el problema original y la solución. DECISIÓN CRÍTICA: "
+            "¿El problema trata sobre funciones continuas 2D (ej. f(x))? -> SÍ: Usa la herramienta graficador. "
+            "¿El problema trata sobre álgebra lineal pura (matrices, valores propios)? -> NO: NO USES LA HERRAMIENTA. Escribe ÚNICAMENTE el texto: 'Gráfico omitido por tratarse de álgebra lineal abstracta'."
+        ),
+        agent=visualizador,
+        expected_output="Confirmación de imagen creada O explicación de omisión."
+    )
+    t4 = Task(
+        description="Genera el código LaTeX definitivo (Clase Article) unificando la solución matemática y las aplicaciones. Si el Visualizador omitió el gráfico, no incluyas el entorno de figura.",
+        agent=arquitecto,
+        expected_output="Código LaTeX listo para compilar."
+    )
+
+    crew = Crew(agents=[arquitecto, investigador, visualizador], tasks=[t1, t2, t3, t4])
+    resultado_bruto = crew.kickoff()
+    
+    # PASO 2: Pasamos la respuesta de la IA por el túnel de lavado
+    resultado_limpio = limpiar_latex(resultado_bruto)
+    
+    return str(resultado_limpio)
+
+if __name__ == "__main__":
+    pass
