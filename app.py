@@ -2,6 +2,18 @@ import streamlit as st
 import os
 import subprocess
 from mathproadvanced import ejecutar_ia_dinamica
+def limpiar_latex(codigo_bruto):
+    # 1. Eliminar las etiquetas de bloque de código de Markdown
+    codigo_limpio = codigo_bruto.replace("```latex", "").replace("```", "")
+    
+    # 2. Arreglar el error de los dobles dólares alrededor de align o align*
+    codigo_limpio = codigo_limpio.replace("$$\\begin{align*}", "\\begin{align*}")
+    codigo_limpio = codigo_limpio.replace("\\end{align*}$$", "\\end{align*}")
+    codigo_limpio = codigo_limpio.replace("$$\n\\begin{align*}", "\\begin{align*}")
+    codigo_limpio = codigo_limpio.replace("\\end{align*}\n$$", "\\end{align*}")
+    
+    # 3. Limpiar espacios en blanco innecesarios al principio y al final
+    return codigo_limpio.strip()
 
 st.set_page_config(page_title="IA Matemática Suprema", page_icon="🧮", layout="centered")
 
