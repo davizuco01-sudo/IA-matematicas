@@ -130,7 +130,12 @@ def ejecutar_ia_dinamica(problema):
     )
 
     crew = Crew(agents=[arquitecto, investigador, visualizador], tasks=[t1, t2, t3, t4])
-    resultado = crew.kickoff()
+    resultado_bruto = crew.kickoff()
+    
+    # PASO 2: Pasamos la respuesta de la IA por el túnel de lavado
+    resultado_limpio = limpiar_latex(resultado_bruto)
+    
+    return str(resultado_limpio)
     
     return str(resultado)
 
