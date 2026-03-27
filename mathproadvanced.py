@@ -14,6 +14,7 @@ os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
 load_dotenv()
 # VOLVEMOS AL 70B: Ahora que no leemos PDFs gigantes, no rozaremos el límite de la API.
 mi_llm = "groq/llama-3.3-70b-versatile"
+
 # --- TÚNEL DE LAVADO LATEX ---
 def limpiar_latex(codigo_bruto):
     # Convertimos a string por si CrewAI devuelve un objeto complejo
@@ -62,8 +63,6 @@ def graficador(f_original: str, f_aprox: str):
 
         y_f = eval(limpiar(f_original), {"np": np, "x": x})
         y_p = eval(limpiar(f_aprox), {"np": np, "x": x})
-        
-        # ... el resto de las líneas para dibujar (plt.figure...) se quedan igual
         
         plt.figure(figsize=(10, 6))
         plt.plot(x, y_f, 'r-', linewidth=2, label=f"Original")
@@ -136,8 +135,6 @@ def ejecutar_ia_dinamica(problema):
     resultado_limpio = limpiar_latex(resultado_bruto)
     
     return str(resultado_limpio)
-    
-    return str(resultado)
 
 if __name__ == "__main__":
     pass
