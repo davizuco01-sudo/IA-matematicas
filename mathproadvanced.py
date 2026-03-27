@@ -29,7 +29,10 @@ def limpiar_latex(codigo_bruto):
     codigo_limpio = codigo_limpio.replace("$$\n\\begin{align*}", "\\begin{align*}")
     codigo_limpio = codigo_limpio.replace("\\end{align*}\n$$", "\\end{align*}")
     
-    # 3. Limpiar espacios en blanco innecesarios al principio y al final
+    # 3. Inyectar el paquete de símbolos de números reales y complejos
+    codigo_limpio = codigo_limpio.replace("\\usepackage{amsmath}", "\\usepackage{amsmath}\n\\usepackage{amssymb}\n\\usepackage{amsfonts}")
+    
+    # 4. Limpiar espacios en blanco innecesarios al principio y al final
     return codigo_limpio.strip()
 
 # 2. HERRAMIENTAS BLINDADAS
