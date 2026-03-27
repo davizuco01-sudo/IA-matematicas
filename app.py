@@ -1,10 +1,27 @@
-import streamlit as st
 import os
-import subprocess
-from mathproadvanced import ejecutar_ia_dinamica
+import matplotlib.pyplot as plt
+import numpy as np
+import sympy as sp
+import re
+from dotenv import load_dotenv
+from crewai import Agent, Task, Crew
+from crewai.tools import tool
+
+# APAGAMOS LA TELEMETRÍA PARA EVITAR TIMEOUTS
+os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
+
+# 1. CONFIGURACIÓN
+load_dotenv()
+# VOLVEMOS AL 70B: Ahora que no leemos PDFs gigantes, no rozaremos el límite de la API.
+mi_llm = "groq/llama-3.3-70b-versatile"
+
+# --- TÚNEL DE LAVADO LATEX ---
 def limpiar_latex(codigo_bruto):
+    # Convertimos a string por si CrewAI devuelve un objeto complejo
+    codigo_limpio = str(codigo_bruto)
+    
     # 1. Eliminar las etiquetas de bloque de código de Markdown
-    codigo_limpio = codigo_bruto.replace("```latex", "").replace("```", "")
+    codigo_limpio = codigo_limpio.replace("```latex", "").replace("```", "")
     
     # 2. Arreglar el error de los dobles dólares alrededor de align o align*
     codigo_limpio = codigo_limpio.replace("$$\\begin{align*}", "\\begin{align*}")
@@ -12,69 +29,42 @@ def limpiar_latex(codigo_bruto):
     codigo_limpio = codigo_limpio.replace("$$\n\\begin{align*}", "\\begin{align*}")
     codigo_limpio = codigo_limpio.replace("\\end{align*}\n$$", "\\end{align*}")
     
-    # 3. Limpiar espacios en blanco innecesarios al principio y al final
+    # 3. Inyectar el paquete de símbolos de números reales y complejos
+    codigo_limpio = codigo_limpio.replace("\\usepackage{amsmath}", "\\usepackage{amsmath}\n\\usepackage{amssymb}\n\\usepackage{amsfonts}")
+    
+    # 4. Limpiar espacios en blanco innecesarios al principio y al final
     return codigo_limpio.strip()
 
-st.set_page_config(page_title="IA Matemática Suprema", page_icon="🧮", layout="centered")
+# 2. HERRAMIENTAS BLINDADAS
+@tool("calculadora")
+def calculadora(expresion: str, operacion: str):
+    """Calcula operaciones de álgebra (escribe 'simplificar' para matrices), integrales ('integrar') o derivadas ('derivar')."""
+    try:
+        if operacion == 'simplificar':
+            res = eval(expresion, {"Matrix": sp.Matrix, "sp": sp})
+            return f"Resultado matricial: {res}"
+        
+        x = sp.Symbol('x')
+        expr = sp.sympify(expresion.replace('ln', 'log'))
+        res = sp.integrate(expr, x) if operacion == 'integrar' else sp.diff(expr, x)
+        return f"Resultado exacto: {res}"
+    except Exception as e:
+        return f"Error en la calculadora: {e}"
 
-st.title("🧮 IA Matemática Suprema")
-st.markdown("Escribe un problema de cálculo, álgebra o física. El equipo de agentes lo resolverá, investigará aplicaciones y generará el PDF.")
+@tool("graficador")
+def graficador(f_original: str, f_aprox: str):
+    """Solo úsala si el problema es de funciones continuas f(x). Genera 'grafico.png'."""
+    try:
+        x = np.linspace(-1, 1, 400)
+        
+        def limpiar(texto):
+            # AQUÍ ESTÁ LA MAGIA: Le enseñamos a leer senos y cosenos
+            t = texto.lower().replace('^', '**').replace('e**x', 'np.exp(x)').replace('exp(x)', 'np.exp(x)')
+            t = t.replace('sin', 'np.sin').replace('cos', 'np.cos') 
+            t = re.sub(r'(\d)([a-z\(])', r'\1*\2', t)
+            return t
 
-problema_usuario = st.text_area("Enunciado del problema:", height=150, placeholder="Ej: Halla los valores propios de la matriz A = [[2, 1], [1, 2]]...")
-
-if st.button("🚀 Resolver Problema", type="primary"):
-    if problema_usuario.strip() == "":
-        st.warning("Por favor, escribe un problema primero.")
-    else:
-        with st.spinner("Los agentes están analizando y redactando..."):
-            try:
-                # 1. Ejecutamos la IA
-                resultado_latex = ejecutar_ia_dinamica(problema_usuario)
-                st.success("¡Problema resuelto por los agentes!")
-                
-                # Mostramos si hay gráfico
-                if os.path.exists("grafico.png"):
-                    st.image("grafico.png", caption="Visualización del problema")
-                
-                # 2. Guardamos el LaTeX temporalmente
-                nombre_tex = "informe_generado.tex"
-                nombre_pdf = "informe_generado.pdf"
-                
-                with open(nombre_tex, "w", encoding="utf-8") as f:
-                    f.write(str(resultado_latex))
-                
-                # 3. Magia: Compilamos a PDF usando el sistema
-                with st.spinner("Compilando el documento a PDF..."):
-                    try:
-                        # Llama al compilador de LaTeX de tu ordenador
-                        subprocess.run(["pdflatex", "-interaction=nonstopmode", nombre_tex], check=True, capture_output=True)
-                        
-                        # Si funciona, preparamos el botón de descarga del PDF
-                        if os.path.exists(nombre_pdf):
-                            with open(nombre_pdf, "rb") as pdf_file:
-                                PDFbyte = pdf_file.read()
-                            
-                            st.download_button(
-                                label="📄 Descargar Informe en PDF",
-                                data=PDFbyte,
-                                file_name="Resolucion_IA.pdf",
-                                mime="application/pdf",
-                                type="primary"
-                            )
-                    except FileNotFoundError:
-                        st.error("⚠️ No se encontró el compilador. Para generar PDFs, necesitas instalar MiKTeX en tu Windows.")
-                    except subprocess.CalledProcessError:
-                        st.warning("⚠️ Hubo un error menor al compilar el PDF (a veces pasa con símbolos raros en LaTeX). Te dejo el código puro abajo.")
-
-                # Siempre damos la opción de copiar el código o bajar el .tex por si acaso
-                with st.expander("Ver Código LaTeX Original"):
-                    st.code(resultado_latex, language="latex")
-                    st.download_button(
-                        label="📥 Descargar archivo .tex",
-                        data=str(resultado_latex),
-                        file_name="informe_generado.tex",
-                        mime="text/plain"
-                    )
-
-            except Exception as e:
-                st.error(f"Ocurrió un error en la IA: {e}")
+        y_f = eval(limpiar(f_original), {"np": np, "x": x})
+        y_p = eval(limpiar(f_aprox), {"np": np, "x": x})
+        
+        plt.figure(figsize=(10, 6))
