@@ -14,6 +14,22 @@ os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
 load_dotenv()
 # VOLVEMOS AL 70B: Ahora que no leemos PDFs gigantes, no rozaremos el límite de la API.
 mi_llm = "groq/llama-3.3-70b-versatile"
+# --- TÚNEL DE LAVADO LATEX ---
+def limpiar_latex(codigo_bruto):
+    # Convertimos a string por si CrewAI devuelve un objeto complejo
+    codigo_limpio = str(codigo_bruto)
+    
+    # 1. Eliminar las etiquetas de bloque de código de Markdown
+    codigo_limpio = codigo_limpio.replace("```latex", "").replace("```", "")
+    
+    # 2. Arreglar el error de los dobles dólares alrededor de align o align*
+    codigo_limpio = codigo_limpio.replace("$$\\begin{align*}", "\\begin{align*}")
+    codigo_limpio = codigo_limpio.replace("\\end{align*}$$", "\\end{align*}")
+    codigo_limpio = codigo_limpio.replace("$$\n\\begin{align*}", "\\begin{align*}")
+    codigo_limpio = codigo_limpio.replace("\\end{align*}\n$$", "\\end{align*}")
+    
+    # 3. Limpiar espacios en blanco innecesarios al principio y al final
+    return codigo_limpio.strip()
 
 # 2. HERRAMIENTAS BLINDADAS
 @tool("calculadora")
